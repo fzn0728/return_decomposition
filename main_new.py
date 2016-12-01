@@ -27,13 +27,10 @@ import outliers_influence as ou
 import copy
 
 
-
-    
 def get_error(df, reg):
     my_ols = sm.ols(formula=reg, data=df).fit()
     resid = my_ols.resid
     return resid
-
     
 def rolling_v_coef(df):
     para_df = pd.DataFrame(columns=['ACWI_err', 'MSCI_World_err', 'Russell_3000', \
@@ -47,8 +44,8 @@ def rolling_v_coef(df):
     for i in range(0,len(df.index)-35):
         df_r = df.iloc[i:i+36,:]
         # gen orthogonal error series
-        df_r['ACWI_err'] = get_error(df_r, 'ACWI ~ MSCI_World + Russell_3000 + US_Dollar + Bond_Index + HFRI_Relative_Value + HFRI_Macro_Total + HFRI_ED_Distressed_Restructuring + HFRI_EH_Equity_Market_Neutral + HFRI_RV_Fixed_Income_Convertible_Arbitrage + HFRI_RV_Fixed_Income_AB + HFRI_ED_Activitst_Index + HFRI_Macro_multistrategy + HFRI_EH_Quant_Directional').values
-        df_r['MSCI_World_err'] = get_error(df_r, 'MSCI_World ~ ACWI_err + Russell_3000 + US_Dollar + Bond_Index + HFRI_Relative_Value + HFRI_Macro_Total + HFRI_ED_Distressed_Restructuring + + HFRI_EH_Equity_Market_Neutral + HFRI_RV_Fixed_Income_Convertible_Arbitrage + HFRI_RV_Fixed_Income_AB + HFRI_ED_Activitst_Index + HFRI_Macro_multistrategy + HFRI_EH_Quant_Directional').values          
+        df_r['ACWI_err'] = get_error(df_r, 'ACWI ~ MSCI_World + Russell_3000').values
+        df_r['MSCI_World_err'] = get_error(df_r, 'MSCI_World ~ ACWI_err + Russell_3000').values          
         my_ols = sm.ols(formula='Kroger ~ ACWI_err + MSCI_World_err + Russell_3000 + US_Dollar + Bond_Index + HFRI_Relative_Value + HFRI_Macro_Total + HFRI_ED_Distressed_Restructuring + HFRI_EH_Equity_Market_Neutral + HFRI_RV_Fixed_Income_Convertible_Arbitrage + HFRI_RV_Fixed_Income_AB + HFRI_ED_Activitst_Index + HFRI_Macro_multistrategy + HFRI_EH_Quant_Directional', data=df_r).fit()
         # concat each rolling param
         s = pd.DataFrame(my_ols.params).T
@@ -59,13 +56,11 @@ def rolling_v_coef(df):
     para_df = para_df.reset_index()
     para_df = para_df.set_index(df.index[35:])
     para_df = para_df.drop('index', axis=1)
-    
-    
     m_df = m_df.reset_index()
     m_df = m_df.set_index(df.index[35:])
     m_df = m_df.drop('index', axis=1)
     # m_df.rename(columns={'ACWI_err':'ACWI', 'MSCI_World_err':'MSCI_World'})
-    return m_df, para_df
+    return df_r, m_df, para_df
 
 
 def plot_v_stack(df):
@@ -86,7 +81,7 @@ def plot_v_stack(df):
     HFRI_Macro_multistrategy = df['HFRI_Macro_multistrategy'].values
     HFRI_EH_Quant_Directional = df['HFRI_EH_Quant_Directional'].values
 
-    
+    # Generate empty plot to have the label
     fig, ax = plt.subplots()
     plt.plot([],[], label='Intercept', color='#56B4E9')
     plt.plot([],[], label='ACWI', color='m')
@@ -102,12 +97,11 @@ def plot_v_stack(df):
     plt.plot([],[], label='HFRI_RV_Fixed_Income_AB', color='#EAEAF2')
     plt.plot([],[], label='HFRI_ED_Activitst_Index', color='#e5ae38')
     plt.plot([],[], label='HFRI_Macro_multistrategy', color='#FFB5B8')
-    plt.plot([],[], label='HFRI_EH_Quant_Directional', color='#eeeeee')
-
+    plt.plot([],[], label='HFRI_EH_Quant_Directional', color='lime')
     # Gen Stackplot
     plt.stackplot(date,Intercept,ACWI,MSCI_World,Russell_3000,US_Dollar,Bond_Index, 
                   HFRI_Relative_Value,HFRI_Macro_Total,HFRI_ED_Distressed_Restructuring,HFRI_EH_Equity_Market_Neutral,HFRI_RV_Fixed_Income_Convertible_Arbitrage,HFRI_RV_Fixed_Income_AB,HFRI_ED_Activitst_Index,HFRI_Macro_multistrategy,HFRI_EH_Quant_Directional,
-                  colors=['#56B4E9','m','c','r','k','b','#92C6FF','#001C7F','.15','#30a2da','#A60628','#EAEAF2','#e5ae38','#FFB5B8','#eeeeee'])
+                  colors=['#56B4E9','m','c','r','k','b','#92C6FF','#001C7F','.15','#30a2da','#A60628','#EAEAF2','#e5ae38','#FFB5B8','lime'])
     plt.xlabel('Date')
     plt.ylabel('Composition')
     plt.legend(loc='upper right', prop={'size':10})
@@ -132,14 +126,12 @@ def plot_pre(para_df, mean_df, title, column_name):
         pred_df[i] = para_df[i]*mean_df[i]    
     pred_df['Kroger'] = mean_df['Kroger']
     pred_df['BETA'] = pred_df.loc[:,column_name].sum(axis=1)
-    
     fig, ax = plt.subplots()
     plt.plot(pred_df['Kroger'].values, linestyle="-", linewidth=4, label='Kroger')
     plt.plot(pred_df['Intercept'].values, linestyle="--", linewidth=2, label='Intercept')
     plt.plot(pred_df['BETA'].values, linestyle="--", linewidth=2, label='BETA')
     plt.legend()
     plt.title(title)
-    
     return pred_df
 
 
@@ -154,7 +146,6 @@ if __name__ == '__main__':
     # Correlation 
     corr_df = df.corr()
     
-    
     ### Calculate VIF Matrix
     VIF_df = cal_vif(df)
     # Rolling 36 months Correlation
@@ -168,36 +159,28 @@ if __name__ == '__main__':
     plt.legend(loc='lower right',prop={'size':8})
     plt.title('36 Months Rolling Correlation with Kroger')
 
-    
     ### VIF adjusted method
-    mean_v_df, para_v_df = rolling_v_coef(df)
+    df_r, mean_v_df, para_v_df = rolling_v_coef(df)
     # para_v_df.plot()
     # plt.title('Evolution of Coefficient - VIF adjusted Method')
     # Calculate Prediction
     pred_v_df = plot_pre(para_v_df, mean_v_df, 'Prediction - VIF Adjusted Method', ['ACWI_err','MSCI_World_err','Russell_3000','US_Dollar','Bond_Index','HFRI_Relative_Value','HFRI_Macro_Total','HFRI_ED_Distressed_Restructuring','HFRI_EH_Equity_Market_Neutral','HFRI_RV_Fixed_Income_Convertible_Arbitrage','HFRI_RV_Fixed_Income_AB','HFRI_ED_Activitst_Index','HFRI_Macro_multistrategy','HFRI_EH_Quant_Directional'])
     # Revise it into proportion
- 
     para_v_abs_df = para_v_df.loc[:,['Intercept','ACWI_err','MSCI_World_err','Russell_3000','US_Dollar','Bond_Index','HFRI_Relative_Value','HFRI_Macro_Total','HFRI_ED_Distressed_Restructuring','HFRI_EH_Equity_Market_Neutral','HFRI_RV_Fixed_Income_Convertible_Arbitrage','HFRI_RV_Fixed_Income_AB','HFRI_ED_Activitst_Index','HFRI_Macro_multistrategy','HFRI_EH_Quant_Directional']].abs()
     para_por_v_abs_df = para_v_abs_df.apply(lambda x: x/x.sum(), axis=1)
-    
     pred_v_abs_df = pred_v_df.loc[:,['Intercept','ACWI_err','MSCI_World_err','Russell_3000','US_Dollar','Bond_Index','HFRI_Relative_Value','HFRI_Macro_Total','HFRI_ED_Distressed_Restructuring','HFRI_EH_Equity_Market_Neutral','HFRI_RV_Fixed_Income_Convertible_Arbitrage','HFRI_RV_Fixed_Income_AB','HFRI_ED_Activitst_Index','HFRI_Macro_multistrategy','HFRI_EH_Quant_Directional']].abs()
     pred_por_v_abs_df = pred_v_abs_df.apply(lambda x: x/x.sum(), axis=1)   
     # plot
     # plot_v_stack(para_por_v_df)
     plot_v_stack(pred_por_v_abs_df)      
     
-    
-    
-    
     ### other more plots
     pred_v_df.plot(linewidth=2)
     plt.legend(loc='upper right',prop={'size':8})
-    
     fig, ax = plt.subplots()
     date = np.arange(66)
     Alpha = pred_v_df['Intercept'].values
     Kroger = pred_v_df['Kroger'].values
-    
     # plt.plot([],[], label='Intercept', color=')
     # plt.plot([],[], label='Kroger', color='r')
     plt.stackplot(date, Alpha, Kroger, alpha=0.7)
