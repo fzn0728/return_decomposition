@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Thu Dec  1 10:32:59 2016
+
+@author: ZFang
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Wed Nov 30 14:16:00 2016
 
 @author: ZFang
@@ -34,10 +41,10 @@ def rolling_v_coef(df):
         # gen orthogonal error series
         df_r['ACWI_err'] = get_error(df_r, 'ACWI ~ MSCI_World + Russell_3000').values
         df_r['MSCI_World_err'] = get_error(df_r, 'MSCI_World ~ ACWI_err + Russell_3000').values          
-        my_ols = sm.ols(formula='FWC ~ ACWI_err + MSCI_World_err + Russell_3000 + US_Dollar + Bond_Index + HFRI_Relative_Value + HFRI_Macro_Total + HFRI_ED_Distressed_Restructuring + HFRI_EH_Equity_Market_Neutral + HFRI_RV_Fixed_Income_Convertible_Arbitrage + HFRI_RV_Fixed_Income_AB + HFRI_ED_Activitst_Index + HFRI_Macro_multistrategy + HFRI_EH_Quant_Directional', data=df_r).fit()
+        my_ols = sm.ols(formula='Kroger_Current ~ ACWI_err + MSCI_World_err + Russell_3000 + US_Dollar + Bond_Index + HFRI_Relative_Value + HFRI_Macro_Total + HFRI_ED_Distressed_Restructuring + HFRI_EH_Equity_Market_Neutral + HFRI_RV_Fixed_Income_Convertible_Arbitrage + HFRI_RV_Fixed_Income_AB + HFRI_ED_Activitst_Index + HFRI_Macro_multistrategy + HFRI_EH_Quant_Directional', data=df_r).fit()
         # concat each rolling param
         s = pd.DataFrame(my_ols.params).T
-        m = pd.DataFrame(df_r.loc[:,['ACWI_err','MSCI_World_err','Russell_3000','US_Dollar','Bond_Index','HFRI_Relative_Value','HFRI_Macro_Total','HFRI_ED_Distressed_Restructuring','HFRI_EH_Equity_Market_Neutral','HFRI_RV_Fixed_Income_Convertible_Arbitrage','HFRI_RV_Fixed_Income_AB','HFRI_ED_Activitst_Index','HFRI_Macro_multistrategy','HFRI_EH_Quant_Directional','FWC']].mean(axis=0)).T
+        m = pd.DataFrame(df_r.loc[:,['ACWI_err','MSCI_World_err','Russell_3000','US_Dollar','Bond_Index','HFRI_Relative_Value','HFRI_Macro_Total','HFRI_ED_Distressed_Restructuring','HFRI_EH_Equity_Market_Neutral','HFRI_RV_Fixed_Income_Convertible_Arbitrage','HFRI_RV_Fixed_Income_AB','HFRI_ED_Activitst_Index','HFRI_Macro_multistrategy','HFRI_EH_Quant_Directional','Kroger_Current']].mean(axis=0)).T
         para_df = pd.concat([para_df,s], axis=0)
         m_df = pd.concat([m_df,m], axis=0)
     # chean format of index
@@ -99,7 +106,7 @@ def plot_v_stack(df):
     
     
 def cal_vif(df):
-    df = df.drop('FWC', axis=1)
+    df = df.drop('Kroger_Current', axis=1)
     VIF_df = df.corr()
     for i in range(0,14):
         for j in range(0,14):
@@ -112,10 +119,10 @@ def plot_pre(para_df, mean_df, title, column_name):
     pred_df = copy.deepcopy(para_df)
     for i in column_name:
         pred_df[i] = para_df[i]*mean_df[i]    
-    pred_df['FWC'] = mean_df['FWC']
+    pred_df['Kroger_Current'] = mean_df['Kroger_Current']
     pred_df['BETA'] = pred_df.loc[:,column_name].sum(axis=1)
     fig, ax = plt.subplots()
-    plt.plot(pred_df['FWC'].values, linestyle="-", linewidth=4, label='FWC')
+    plt.plot(pred_df['Kroger_Current'].values, linestyle="-", linewidth=4, label='Kroger_Current')
     plt.plot(pred_df['Intercept'].values, linestyle="--", linewidth=2, label='Intercept')
     plt.plot(pred_df['BETA'].values, linestyle="--", linewidth=2, label='BETA')
     plt.legend()
@@ -127,7 +134,7 @@ def plot_pre(para_df, mean_df, title, column_name):
 if __name__ == '__main__':
     # file path
     os.chdir(r'C:\Users\ZFang\Desktop\TeamCo\return and risk attribution project\\')
-    file_name = 'data_fwc.xlsx'
+    file_name = 'data_kroger_current.xlsx'
     df = pd.read_excel(file_name)
     df.index = df['Period']
     df = df.drop('Period', axis=1)
@@ -139,13 +146,13 @@ if __name__ == '__main__':
     # Rolling 36 months Correlation
     r_36_df = df.rolling(window=36).corr()
     corr_36_df = r_36_df[df.index[35:]].values
-    corr_36_FWC_df = r_36_df.iloc[:,5].T
-    corr_36_FWC_df = corr_36_FWC_df.iloc[35:]
+    corr_36_Kroger_Current_df = r_36_df.iloc[:,5].T
+    corr_36_Kroger_Current_df = corr_36_Kroger_Current_df.iloc[35:]
     # Plot graph
     plt.style.use('fivethirtyeight')
-    corr_36_FWC_df.plot()
+    corr_36_Kroger_Current_df.plot()
     plt.legend(loc='lower right',prop={'size':8})
-    plt.title('36 Months Rolling Correlation with FWC')
+    plt.title('36 Months Rolling Correlation with Kroger_Current')
 
     ### VIF adjusted method
     df_r, mean_v_df, para_v_df = rolling_v_coef(df)
@@ -168,10 +175,10 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     date = np.arange(66)
     Alpha = pred_v_df['Intercept'].values
-    FWC = pred_v_df['FWC'].values
+    Kroger_Current = pred_v_df['Kroger_Current'].values
     # plt.plot([],[], label='Intercept', color=')
-    # plt.plot([],[], label='FWC', color='r')
-    plt.stackplot(date, Alpha, FWC, alpha=0.7)
+    # plt.plot([],[], label='Kroger_Current', color='r')
+    plt.stackplot(date, Alpha, Kroger_Current, alpha=0.7)
 
     
     
